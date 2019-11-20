@@ -15,6 +15,7 @@ bot.
 
 import logging
 import io
+from io import open as iopen
 import requests
 import json
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
@@ -41,18 +42,17 @@ def help(update, context):
 
 
 def echo(update, context):
-    print("ESend file to Yolo.")
-    file = update.message.photo[0].get_file()
+    print("[+] Send file to Yolo server.")
+    file = update.message.photo[2].get_file()
     name_file = file.download()
     print(name_file)
     url = 'http://localhost:5000/api/test'
     data = json.dumps({"image":name_file})
-    r = requests.post(url = url, data = data, headers={'Content-Type': 'application/json;charset=UTF-8'})
-    sleep(2)
-    with open('test123.jpeg', 'wb') as f:
-        for chunk in r:
-            f.write(chunk)
-    bot.send_photo(chat_id=chat_id, photo=open('tests/test.png', 'rb'))
+    response = requests.post(url = url, data = data, headers={'Content-Type': 'application/json;charset=UTF-8'})
+
+    with iopen('temp.jpeg', 'wb') as file:
+        file.write(response.content)
+    update.message.reply_photo(open( 'temp.jpeg','rb'))
 
 
 def error(update, context):
