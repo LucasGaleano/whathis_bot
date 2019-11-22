@@ -15,9 +15,10 @@ from PIL import Image
 
 # construct the argument parse and parse the arguments
 
-confthres = 0.3
-nmsthres = 0.1
+confthres = 0
+nmsthres = 0
 yolo_path = './'
+
 
 def get_labels(labels_path):
     # load the COCO class labels our YOLO model was trained on
@@ -50,10 +51,18 @@ def load_model(configpath,weightspath):
 
 def image_to_byte_array(image:Image):
   imgByteArr = io.BytesIO()
-  image.save(imgByteArr, format='PNG')
+  image.save(imgByteArr, format='JPG')
   imgByteArr = imgByteArr.getvalue()
   return imgByteArr
 
+
+def frames_to_ignore(number):
+    while True:
+        for ignore in range(number+1):
+            yield ignore
+
+def ignore_this_frame(ignore_frames):
+    return next(ignore_frames)
 
 def get_predection(image,net,LABELS,COLORS):
     (H, W) = image.shape[:2]
@@ -132,8 +141,8 @@ def get_predection(image,net,LABELS,COLORS):
             color = [int(c) for c in COLORS[classIDs[i]]]
             cv2.rectangle(image, (x, y), (x + w, y + h), color, 2)
             text = "{}: {:.4f}".format(LABELS[classIDs[i]], confidences[i])
-            print('boxes: ',boxes)
-            print('classID: ',classIDs)
+            #print('boxes: ',boxes)
+            #print('classID: ',classIDs)
             cv2.putText(image, text, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX,0.5, color, 2)
     return image
 
@@ -147,6 +156,8 @@ Weights=get_weights(wpath)
 nets=load_model(CFG,Weights)
 Colors=get_colors(Lables)
 video_capture = cv2.VideoCapture(0)
+last_image = ''
+ignore_frame = frames_to_ignore(10)
 # Initialize the Flask application
 # app = Flask(__name__)
 #
@@ -161,13 +172,16 @@ while True:
 
     #img = request.files["image"].read()
     #img = Image.open(io.BytesIO(img))
-    npimg=np.array(img)
-    image=npimg.copy()
-    image=cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-    res=get_predection(image,nets,Lables,Colors)
+    if not ignore_this_frame(ignore_frame):
+        npimg=np.array(img)
+        image=npimg.copy()
+        #image=cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+        img=get_predection(image,nets,Lables,Colors)
+        last_image = img
+    else:
+        img = last_image
     # show the output image
-
-    cv2.imshow("Video", res)
+    cv2.imshow("Video", img)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 #return Response(response=img_encoded, status=200,mimetype="image/jpeg")
